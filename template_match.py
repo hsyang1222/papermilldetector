@@ -163,10 +163,11 @@ def match_image_with_template(template_filenamelist, template_img, select_paper_
         
         paper_num = parse_paper_num(top_score_check_img_name)
         #''.join( x for x in top_score_check_img_name[:top_score_check_img_name.find('Page')] if x.isdigit())
-        paper_info = paper_info_df.iloc[int(paper_num)-1]
+        paper_info = paper_info_df.iloc[int(paper_num)-2]
         name, journal, year, autors, email = paper_info[9], paper_info[10], paper_info[11], paper_info[22], paper_info[23]
         info_str = "%s(%d). %s. \"%s.\" - %s %s [%s] western blot" % (journal, int(year), autors, name, infoPage, infoImage, infoXY)
         
         fig_list.append((fig, info_str))
+        #print(top_score_check_img_name)
 
     return fig_list
