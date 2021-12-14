@@ -60,7 +60,8 @@ def pdf_to_img(filename):
                 #save image locally
                 #image.save(open(image_path+filename+f"Page{page_number}Image{image_number}.{ext}", "wb"))
                 
-                numpy_image=np.array(image)  
+                numpy_image=np.array(image)
+                if len(numpy_image.shape) > 2 : numpy_image = numpy_image[:,:,0]
 
                 # convert to a openCV2 image and convert from RGB to BGR format
                 opencv_image=cv2.cvtColor(numpy_image, cv2.COLOR_RGB2BGR)
