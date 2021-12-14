@@ -3,6 +3,7 @@ import re
 import os
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib import patches as patches
 os.environ['OPENCV_IO_ENABLE_JASPER']= 'True'
 import cv2
 
@@ -12,6 +13,8 @@ import io
 from PIL import Image
 from matplotlib.pyplot import imshow
 import numpy as np
+
+import pandas as pd
 
 
 def pdf_to_img(filename):
@@ -84,9 +87,21 @@ def template_load(template_dir) :
 method_name = 'cv2.TM_SQDIFF'
 method = eval(method_name)
 
-def match_image_with_template(template_filenamelist, template_img, select_paper_img, N=5):
+paper_info_df =  pd.read_csv("Jilin University.csv", encoding='cp949')
+
+def get_original_paper_name(name) : 
+    return int(name.split('/')[-1].split('.')[0])
+
+def parse_paper_num(name) :
+    namestr = ''.join( x for x in name[:name.find('Page')] if x.isdigit())
+    return int(namestr)
+
+def match_image_with_template(template_filenamelist, template_img, select_paper_img, paper_name, N=5, score_limit=180000):
     match_info_dict={}
     for i, (template_name, template) in enumerate(tqdm.tqdm(list(zip(template_filenamelist, template_img)))) : 
+        
+        if parse_paper_num(template_name) == paper_name : continue
+        
         if select_paper_img.shape[0] < template.shape[0] or select_paper_img.shape[1] < template.shape[1] : continue
         res = cv2.matchTemplate(select_paper_img,template,method)
         min_val,max_val,min_loc, max_loc = cv2.minMaxLoc(res)
@@ -94,11 +109,13 @@ def match_image_with_template(template_filenamelist, template_img, select_paper_
         if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
             top_left = min_loc
             score = min_val
+            if score <=  score_limit: 
+                match_info_dict[i]=(template_name,score,top_left)
         else:
             top_left = max_loc
             score = max_val
-
-        match_info_dict[i]=(template_name,score,top_left)
+            if score >= score_limit:
+                match_info_dict[i]=(template_name,score,top_left)
         
         #score 순으로 정렬합니다. 메소드마다 오름차순/내림차순이 달라 순서를 맞춤
     if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
@@ -116,19 +133,40 @@ def match_image_with_template(template_filenamelist, template_img, select_paper_
         template = template_img[select_index]
         w,h = template.shape[::-1]
         bottom_right =  (top_left[0]+w,top_left[1]+h)
-        cv2.rectangle(top_score_check_img,top_left,bottom_right,(0,255,0),5)
+        #cv2.rectangle(top_score_check_img,top_left,bottom_right,(0,255,0),5)
 
 
         fig = plt.figure() 
-        select_paper_name = 'input_paper'
 
         ax1, ax2, ax3 = fig.add_subplot(131), fig.add_subplot(132), fig.add_subplot(133)
-        ax1.imshow(top_score_check_img,cmap='gray'), ax1.set_title(select_paper_name, fontsize=8),ax1.set_yticks([]),ax1.set_xticks([])
-        ax2.imshow(top_score_check_img[top_left[1]:top_left[1]+h, top_left[0]:top_left[0]+w],cmap='gray'), ax2.set_title("[zoom matched]", fontsize=8),ax2.set_yticks([]),ax2.set_xticks([])
-        ax3.imshow(template,cmap='gray'),ax3.set_title('%s\nsocre=%f'%(top_score_check_img_name,top_score), fontsize=8),ax3.set_yticks([]),ax3.set_xticks([])
+        ax1.add_patch(
+         patches.Rectangle(
+            top_left,
+            w,
+            h,
+            edgecolor = 'blue',
+            facecolor = 'red',
+            fill=False
+         ) )
+        ax1.imshow(top_score_check_img,cmap='gray'), ax1.set_title("input paper", fontsize=8),ax1.set_yticks([]),ax1.set_xticks([])
+        ax2.imshow(top_score_check_img[top_left[1]:top_left[1]+h, top_left[0]:top_left[0]+w],cmap='gray'), ax2.set_title("input paper\n[zoom detected western blot]", fontsize=8),ax2.set_yticks([]),ax2.set_xticks([])
+        ax2.spines['bottom'].set_color('blue'), ax2.spines['top'].set_color('blue'), ax2.spines['left'].set_color('blue'), ax2.spines['right'].set_color('blue')
+        ax3.imshow(template,cmap='gray'), ax3.set_title("papermills\nwesternblot",fontsize=8),ax3.set_yticks([]),ax3.set_xticks([])
+        ax3.spines['bottom'].set_color('red'), ax3.spines['top'].set_color('red'), ax3.spines['left'].set_color('red'), ax3.spines['right'].set_color('red')
 
-        fig_list.append(fig)
+        
         #plt.show()
-
+        
+        infoPage = top_score_check_img_name[top_score_check_img_name.find('Page'):top_score_check_img_name.find('Image')]
+        infoImage = top_score_check_img_name[top_score_check_img_name.find('Image'):top_score_check_img_name.find('.')]
+        infoXY = top_score_check_img_name[top_score_check_img_name.find('(')+1:top_score_check_img_name.find(')')]
+        
+        paper_num = parse_paper_num(top_score_check_img_name)
+        #''.join( x for x in top_score_check_img_name[:top_score_check_img_name.find('Page')] if x.isdigit())
+        paper_info = paper_info_df.iloc[int(paper_num)-1]
+        name, journal, year, autors, email = paper_info[9], paper_info[10], paper_info[11], paper_info[22], paper_info[23]
+        info_str = "%s(%d). %s. \"%s.\" - %s %s [%s] western blot" % (journal, int(year), autors, name, infoPage, infoImage, infoXY)
+        
+        fig_list.append((fig, info_str))
 
     return fig_list
