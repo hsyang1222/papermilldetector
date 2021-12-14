@@ -136,7 +136,7 @@ def match_image_with_template(template_filenamelist, template_img, select_paper_
         #cv2.rectangle(top_score_check_img,top_left,bottom_right,(0,255,0),5)
 
 
-        fig = plt.figure() 
+        fig = plt.figure( figsize=(6,2)) 
 
         ax1, ax2, ax3 = fig.add_subplot(131), fig.add_subplot(132), fig.add_subplot(133)
         ax1.add_patch(
@@ -169,5 +169,17 @@ def match_image_with_template(template_filenamelist, template_img, select_paper_
         
         fig_list.append((fig, info_str))
         #print(top_score_check_img_name)
+    
+    if fig_list == [] : 
+        fig = plt.figure( figsize=(6,2)) 
+
+        ax1, ax2, ax3 = fig.add_subplot(131), fig.add_subplot(132), fig.add_subplot(133)
+
+        ax1.imshow(select_paper_img.copy(),cmap='gray'), ax1.set_title(paper_name, fontsize=8),ax1.set_yticks([]),ax1.set_xticks([])
+        ax2.text(0, 0, "no matched", fontsize=10), ax2.set_title("[no matched]", fontsize=8),ax2.set_yticks([]),ax2.set_xticks([])
+        ax2.spines['bottom'].set_color('blue'), ax2.spines['top'].set_color('blue'), ax2.spines['left'].set_color('blue'), ax2.spines['right'].set_color('blue')
+        ax3.text(0, 0, "no matched", fontsize=10), ax3.set_title("[no matched]", fontsize=8),ax3.set_yticks([]),ax3.set_xticks([])
+        ax3.spines['bottom'].set_color('red'), ax3.spines['top'].set_color('red'), ax3.spines['left'].set_color('red'), ax3.spines['right'].set_color('red')
+        fig_list.append((fig, "no matched"))
 
     return fig_list
